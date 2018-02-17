@@ -1,11 +1,6 @@
 package io.dropwizard.metrics5.jetty9;
 
-import io.dropwizard.metrics5.Counter;
-import io.dropwizard.metrics5.Meter;
-import io.dropwizard.metrics5.MetricName;
-import io.dropwizard.metrics5.MetricRegistry;
-import io.dropwizard.metrics5.RatioGauge;
-import io.dropwizard.metrics5.Timer;
+import io.dropwizard.metrics5.*;
 import org.eclipse.jetty.http.HttpMethod;
 import org.eclipse.jetty.server.AsyncContextState;
 import org.eclipse.jetty.server.Handler;
@@ -67,6 +62,8 @@ public class InstrumentedHandler extends HandlerWrapper {
 
     private AsyncListener listener;
 
+    private TaggedCounter requestsCounter;
+
     /**
      * Create a new instrumented handler using a given metrics registry.
      *
@@ -95,6 +92,10 @@ public class InstrumentedHandler extends HandlerWrapper {
         this.name = name;
     }
 
+    public TaggedCounter getRequestsCounter() {
+        return requestsCounter;
+    }
+
     @Override
     protected void doStart() throws Exception {
         super.doStart();
@@ -103,6 +104,8 @@ public class InstrumentedHandler extends HandlerWrapper {
 
         this.requests = metricRegistry.timer(prefix.resolve("requests"));
         this.dispatches = metricRegistry.timer(prefix.resolve("dispatches"));
+
+        this.requestsCounter = TaggedCounter.build().name("requests_total").tagNames("method", "status", "path").create();
 
         this.activeRequests = metricRegistry.counter(prefix.resolve("active-requests"));
         this.activeDispatches = metricRegistry.counter(prefix.resolve("active-dispatches"));
@@ -296,5 +299,7 @@ public class InstrumentedHandler extends HandlerWrapper {
         final long elapsedTime = System.currentTimeMillis() - start;
         requests.update(elapsedTime, TimeUnit.MILLISECONDS);
         requestTimer(request.getMethod()).update(elapsedTime, TimeUnit.MILLISECONDS);
+
+        requestsCounter.tags(request.getMethod(), String.valueOf(response.getStatus()), request.getPathInfo()).inc();
     }
 }

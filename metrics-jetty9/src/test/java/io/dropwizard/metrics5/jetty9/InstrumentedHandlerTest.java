@@ -2,6 +2,7 @@ package io.dropwizard.metrics5.jetty9;
 
 import io.dropwizard.metrics5.MetricName;
 import io.dropwizard.metrics5.MetricRegistry;
+import io.dropwizard.metrics5.TaggedCounter;
 import org.assertj.core.api.Assertions;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.api.ContentResponse;
@@ -116,6 +117,19 @@ public class InstrumentedHandlerTest {
             .isEqualTo(200);
 
         assertResponseTimesValid();
+    }
+
+    @Test
+    public void createTaggedMetrics() throws Exception {
+        client.GET(uri("/hello"));
+        client.GET(uri("/hello"));
+        client.GET(uri("/hello"));
+        client.POST(uri("/foo")).send();
+
+
+        TaggedCounter requestsCounter = handler.getRequestsCounter();
+        assertThat(requestsCounter.tags("GET", "200", "/hello").getCount()).isEqualTo(3);
+        assertThat(requestsCounter.tags("POST", "200", "/foo").getCount()).isEqualTo(1);
     }
 
     private void assertResponseTimesValid() {
